@@ -1,0 +1,93 @@
+\documentclass[english]{article}
+
+\usepackage[table]{xcolor}
+\usepackage[margin=1.0in]{geometry}
+\usepackage{algorithmicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{amsthm}
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{wrapfig}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{underscore}
+\usepackage{babel}
+\usepackage{csquotes}
+\usepackage{color}
+\usepackage{empheq}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\newcommand*\widefbox[1]{\fbox{\hspace{2em}#1\hspace{2em}}}
+\def\pdc#1#2#3{\left(\frac{\partial#1}{\partial#2}\right)_#3}
+\def\expval#1{\langle #1 \rangle}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Supercoiled DNA Simulation Package}
+\rhead{Guidelines for Use}
+\rfoot{Page \thepage}
+
+\setlength{\columnsep}{0.1pc}
+
+
+\title{Supercoiled DNA Monte Carlo Simulation : \\Guidelines for Use}
+\author{Brad Krajina}
+\date{\today}
+\begin{document}
+\maketitle
+\vspace{-0.2in}
+\rule{\linewidth}{0.4pt}
+
+\section{Introduction}
+This simulation package performs Monte Carlo simulations of a polymer modeled as a wormlike chain with twist for simulations of supercoiled rings. The simulation allows for the possibility of simulating polymer chains with both linear and ring topology.
+\section{Requirements}
+This simulation package has been tested on Ubuntu 14.01 and is written primarily in FORTRAN 95 with some FORTRAN 2003 support. The following packages/libraries are required:
+\begin{itemize}
+\item gfortran compiler v. 5 or greater
+\item openMPI v. 2.01 
+\item BLAS linear algebra library (FORTRAN)
+\item LAPACK linear algebra library (FORTRAN)
+\end{itemize}
+
+\section{Using the Simulation package}
+\subsection{Inputs}
+All inputs for the simulation are read from the 'input' folder. Two files are read from: 'input' and 'LKs'. The former is always read from. The latter is read from only when parallel tempering with respect to linking number is performed. The input file should be written as a set of key-value pairs, separated by a space. The ordering is not important. The following inputs should be provided (note that default values are specified in 'src/SIMcode/params.f03' is values are not provided).
+
+\begin{itemize}
+\item \textbf{L} -- (double precision) the contour length of the polymer (in units of your choice)
+\item \textbf{LP} -- (double precision) the persistence length of the polymer (in units of your choice)
+\item \textbf{LT} -- (double precision) the twist persistence length of the polymer (in units of your choice)
+\item \textbf{NB} -- (integer) number of "beads" used to represent the polymer 
+\item \textbf{RING} -- (1 or 0). Is polymer a ring?
+\item \textbf{TWIST} -- (1 or 0). Include twist energy?
+\item \textbf{LK} -- (integer). Polymer linking number. Relevant only for rings with twist. Note that if parallel tempering is used, this value will be overwritten by the 'LKs' file.
+\item \textbf{INTON} -- (1 or 0) Include polymer self-repulsion interactions?
+\item \textbf{VHC}   -- (double precision) polymer steric repulsion strength (in units of $k_BT$).
+\item \textbf{LHC} -- (double precision) polymer self-repulsion interaction diameter
+\item \textbf{INDMAX} -- (integer) number of polymer configurations to save
+\item \textbf{NINIT} -- (integer) number of initialization monte carlo simulations to perform
+\item \textbf{PTON}  -- (T or F). Is parallel tempering on?
+\item \textbf{NSTEP} -- (integer) number of Monte Carlo steps to perform between save points (if parallel tempering off), or number of Monte Carlo steps to perform between replica exchange attempts (if parallel tempering is on)
+\item \textbf{NREPLICAEXCHANGE} -- (integer) number of replica exchange attempts to perform between saving polymer configuration
+
+If parallel tempering is included (PTON = T), then an additional file 'LKs' is necessary. This is simply a text file in which each row contains a value of the linking number to be included in the set of simulations (in order of increasing linking number). A simulation will be launched using openMPI in which process corresponds to a linking number, with periodic attempts to exchange polymer chain configuration between linking numbers.
+
+\subsection{Outputs}
+
+All saved outputs are stored in the 'data' folder. Currently, the polymer bead position matrix 'r' is saved at each save point, together with the set of orientation vectors 'u'. If parallel tempering is on, outputs will be directed to the appropriate folder within 'data' named 'LK_$x$' where $x$ is the value specified for the linking number. If parallel tempering is not on, configurations are saved directly in the highest level of 'data'.
+
+\subsection{Running a simulation}
+
+To run a successful simulation, it is essential that the program is launched using a number of threads for openMPI that is consistent with the parallel tempering settings. If parallel tempering is not used, the executable should be run directly. Otherwise, the number of threads used in openMPI should be 1 greater than the number of linking numbers used in the parallel tempering scheme. The program will exit with an error if this does not hold.
+
+A script for compiling the simulation code \textbf{'compile.sh'} is included to compile the program with mpifort at the highest level of the simulation directory and generate an executable \textbf{wlcsim}. An example script that compiles the code and runs the simulation with openMPI using a hard-coded number of processes is available in \textbf{'runwlcsim.sh'}.
+
+Alternatively, it may be desirable to launch the simulation from a higher-level script that ensures that the data directory is properly set up, the input files are configured, and the program is launched with the proper number of processors. An example python script that performs this is available in \textbf{simrun.py}. The script uses a template input file, \textbf{'input/template'} to generate a new input file in which only the specified parameters are changed to new values. The script also cleans the data directory, and ensures that folders are created for the appropriate linking numbers that the simulation is to be run at.
+
+\subsection{Visualizing simulation results}
+In the \textbf{'/movie'} folder, a couple of example scripts are available for generating .pdb files from the output and visualizing them in pymol. The script \textbf{'/movie/r2pdb.py'} contains a function for transforming a text file containing the polymer bead positions into a pdb file. Example scripts for generating a set of pdb files are available in \textbf{'/movie/pdb_gen.py'}. A pymol script for simple visualization is available in \textbf{'mksnap.pml'}, which can be run from the pymol command line using the command '@mksnap.pml'.
+
+
+\end{itemize}
+\end{document}
