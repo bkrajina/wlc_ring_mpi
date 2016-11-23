@@ -1,0 +1,74 @@
+Log of Changes in WLC-ring code
+
+06/18/2014
+-Determined that bending, stretching, and compression moduli in getpara.f95 are non-dimensionalized by the persistence length, leading to the correct conformation statistics only when lp=1. Corrected this by re-dimensionalizing the moduli using the persistence length. 
+-Performed simulations of linear and open-circular DNA (5.8 kb) without interactions. Systems still do not capture gaussian statistics when lp is not equal to 1.
+-In getpara.f95, L is non-dimensionalized by LP. This was not accounted for in MC_elas.f95 in the twist energy calculation. MC_elas.f95 updated to reflect this. 
+
+06/19/2014
+-In getpara.f95 calculation of DEL is not correct for rings (should be divided by N for rings and N-1 for linear chains). Corrected this.
+-Scaling of elastic parameters still not correct when changing length dimensions by arbitrary factor (i.e. when changing units of length). To dimensionalize, ETA must be divided by lp. Note that when initially fetching the elastic parameters, the elastic parameters are obtained in dimensionless form. They must be dimensionalized by lp according to :
+ETA=ETA/lp
+EB=EB*lp
+EPERP=EPERP/lp
+EPAR=EPAR/lp
+-Elastic energies now do not change in magnitude (on average) when scaling all lengths by an arbitrary factor (i.e. changing units of length).
+The parameters are also modified to absorb the dimensional DEL in their values.
+-The energy_elas.f95 file in the SIMcode was not correct for linear molecules. It did not skip the last bead. This has been corrected.
+
+06/262014
+-Parameters file used appeared to not be based on optimization of alpha to find minimum length scale of accuracy by optimization with respect to structure factor for del <1. Instead used Lena's parameter file, which provides different values and optimize alpha for del<1. Old parameters file moved to old parameters folder.
+
+06/29/2014
+-Reran Lena's tabulate parameters code. Now using 200 points between del =0 and del =1 instead of 30 for better accuracy from interpolation file. Moved shorter parameters file to old parameters folder, and retitled dssWLCparams_short.
+-Updated wlcsim.f95 to calculate average and standard deviation of RGYRSQ and R2. This is currently only set up to work properly for single chain simulation. Will need to update for a multi-chain simulation.
+
+7/1/2014
+-Updated getpara.f95 to correct error in maximum indices with updated (longer) file. Note that in the future, this subroutine should be updated to automatically adapt to the size of the input parameter file, rather than having a hard-coded length.
+
+7/15/2014
+-Included python knot_check.py script in folder for knot checking. Currently, wlcsim.f95 is modified to run the knot checking script for all of the saved configurations if the polymer is a ring. In the future, knot checking script will need to be translated to FORTRAN or c++ if it is to be used after each MC step.
+-Added subroutines auto_correlation.f95, which calculates the autocorrelation of elements of a vector (fluctuations away from the mean) given a value of delta, the indicial spacing between elements. Also added auto_correlation_vector.f95, which calculates the autocorrelation for a vector of delta values and returns a vector of autocorrelations. Current wlcsim.f95 is modified to compute the autocorrelation of RSQ, RGYRSQ, and Wr for values of delta up to 1/10 of the total number of saves. This restriction to 1/10 is done to ensure the autocorrelation is averaged over enough points to obtain meaningful values.
+-In both energy_self_chain.f95 and energy_self_crank.f95, for cases in which two segments were not skew, but the intersection of the extrapolated lines lies beyond the segments, the distance was erroneously calculated as the maximum distance between bead pairs. It is now changed to the minimum distance between bead pairs.
+
+7/24/2014
+-Updated wlcsim.f95 to include calculation of 4th and 6th order moments of end-to-end distribution, as well as the size of the end-to-end displacement. 
+-Changed wlcsim.f95 to have a minimum amplitude for the slide move that scales with the size of the segments, not the total length of the chain. This may still not be correct for arbitrary discretization.
+
+8/12/14
+-Included three new scripts for knot-checking: alexanderp.f95, abs_determinant.f95, and bubble_sort.f95, which computer the alexander polynomial evaluated at t=-1, the absolute value of the determinant of a matrix, and perform a bubble sort of the rows of a matrix with respect to values in a particular column. Mcsim.f95 has been modified to calculate the alexander polynomial for a ring and reject the move if the chain becomes knotted (delta/=1).  Currently, this works only for a single chain.
+
+8/25/24
+-updated energy_self_slide.f95 to accommodate changes in energy due to a slide move for linear chains (in addition to rings). Previously, this code worked only for rings.
+
+9/29/2014
+-The original implementation of the replica exchange was not correct. Originally, the exchange was accepted if both replicas accepted the other configuration based on the traditional Metropolis probability. However, this is not correct. Instead, one replica decides if both exchange based on the Metropolis-Hastings probability that simultaneously considers the energies of both configurations under both Hamiltonians. The reason that this is necessary is that the probability is not simply the boltzmann weighting; it is min (1, boltzman). Hence, if the joint probability of single exchanges is used, a much lower transition probability is observed.
+
+10/17/2014:
+-updated alexanderp.f95 to improve performance. Previously, segments were summed over twice, and the crossing was only saved if the I index corresponded to an undercrossing. Now, the second summation index for finding crossings is only summed up to I-2, and the matrix of crossings is sorted using a bubble sort after the fact. This is reflected in the new file alexanderp_opt.f95.
+
+11/4/2014
+-Corrected alexanderp.f95. For larger supercoiled DNA molecules, cases were found in which the knot checking program would give an incorrect result during a particular run (saying it was not knotted), and then become trapped in all subsequent steps since the program had accepted a knotted configuration. This was due to the Cross matrix being initialized with old values of the cross indices. This has been corrected by forcing the Cross matrix to be initialized with the value of 0. in all entries.
+
+11/10/2014
+-Corrected energy_elas.f95. Out of bound references were made to the U vectors because IB+1 was used in the array index rather than IB1P1, which accounts for the periodic conditions in a ring.
+-Included two new subroutineds, alexanderp_crank.f95 and alexanderp_slide.f95, which compute the alexandper polynomial after a crank-shaft move or a slide move, respectively. This uses the previous value of the Cross matrix from a previous MC step and updates only the portion that can change during one of these moves.
+-Updated mcsim.f95 to include a maximum window size. By default, the maximum window size for moves is currently set to half the number of beads. This is done to reduce the computational expense associated with computing changes in write and the alexandper polynomial after MC steps. The worst case scenario is the case in which the window is half the total chain size, which is the average window size for moves in which the window is the full length of the chain. The optimum value of the maximum window size has not been determined.
+
+11/18/2014
+-Corrected wlcsim.f95. In parallel tempering scheme, when LK=LKSwap (i.e. first or last replica), the step in which the exchange index was written to was skipped, which causes issues during restart. Also, ensured that the acceptus status is wrriten as 1 in the case that LK=LkSwap.
+-Also, MCAMP and WINDOW were not saved during simulations, so the simulation started with no values for these during restart. This has been corrected.
+
+11/20/2014
+-Corrected wlcsim.f95 to change order of when UpOrDown variable is written to file. This is necessary for proper restart.
+
+8/11/2015
+-Corrected mc_move.f95. Move 2 was causing unphysical extension beyond the chain contour length (even at fine discretization) for chains of length <0.2lp. Move 2 was corrected when IT1 and IT2
+are reordered. Previously, IT1 and IT2 were reordered, but IB1 and IB2 were not, for linear chains. 
+
+8/14/2015
+-Corrected mc_move.f95. Same error found in move1 as in move2 for linear chain case. Updated so that IB1 and IB2 are also reordered when IT1 and IT2 are reordered
+
+9/9/2015
+-updated wlcsim.f95 so that synchronization for parallel tempering only checks for updated to MC_IND every 1 second to avoid burdening
+cluster systems with excessive I/O

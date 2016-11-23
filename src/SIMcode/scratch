@@ -1,0 +1,105 @@
+     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     !Begin Monte Carlo Simulation Loop
+     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+     print *, 'getting ready'
+     do ind = 1,indmax
+        !Send out the Lk to the worker nodes to begin their
+        !simulations
+        print *, 'sending out stuff'
+        do rep = 1,NLks
+           dest = nodeNumber(rep)
+           Lk = Lks(rep)
+           call MPI_Send (Lk,1, MPI_INTEGER, dest,   0, &
+                MPI_COMM_WORLD,error )
+        enddo
+
+        
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !Hear back from workers
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        !Loop over Lk replicas
+        
+        do rep = 1,NLks
+           Lk = Lks(rep)
+           !Determine which node this Lk is running on
+           source = nodeNumber(rep)
+           !Get the energy and writhe from this Lk
+           call MPI_RECV(Wr,1, MPI_DOUBLE_PRECISION, source, 0, &
+                MPI_COMM_WORLD,status,error )
+           call MPI_RECV(ETwist,1, MPI_DOUBLE_PRECISION, source, 0, &
+                MPI_COMM_WORLD,status,error )
+           Wrs(rep) = Wr
+           ETwists(rep) = ETwist
+        enddo
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !Perform Replica Exchange
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        !Loop over Lk replicas. Each replica first looks to the replica below, then the one above
+        
+        do rep = 1,NLks-1
+           !We are asking each polymer configuration to swap its Lk. The only contribution to the change in energy
+           !is the change in twist energy. The new twist energy is the twist associated with the current writhe
+           !evaluated under the trial Lk
+
+           dE_exchange = 0.0d0
+           
+           dE_exchange = ETwists(rep) + Etwists(rep+1)
+
+           !Change in twist energy due to rep taking Lk above it
+           dE_exchange = dE_exchange -((2*PI*(Lks(rep + 1)-Wrs(rep))**2.d0)*LT/(2.d0*L))
+           
+           !Change in twist energy due to rep + 1 taking Lk below it
+           dE_exchange = dE_exchange -(2*PI*(Lks(rep)-Wrs(rep + 1))**2.d0)*LT/(2.d0*L)
+
+           !Generate a random number for the exchange
+!           call random_number(urand,rand_stat)
+           
+        enddo
+
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !Monte Carlo Simulation loop
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      do ind = 1,indmax
+
+         !Wait for head node to send out Lk value
+         source = 0
+         call MPI_Recv(Lk,1, MPI_INTEGER, source,   0, &
+              MPI_COMM_WORLD,status,error )
+         !Perform a Monte Carlo simulation
+         call MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
+           MCAMP,SUCCESS,SUCCESS_TOTAL,MOVEON,WINDOW,RING,TWIST,Lk,LT,LP,L,rand_stat)
+         
+         !Calculate dimensions of polymer, energy, and writhe
+         CALL getdim(N,NP,NT,R,RCOM,RCOMSQ,RGYRSQ,R2,R4,R6,DR)
+        
+         call WRITHE(R,N, Wr)
+                 
+         CALL energy_elas(EELAS,R,U,NT,N,NP,PARA,RING,TWIST,Lk,lt,LP,L)
+                        
+         EPONP=0.
+         if (INTON.EQ.1) then
+            call  ENERGY_SELF_CHAIN(EPONP,R,NT,N,NP,PARA,RING)
+         endif
+         
+         !Calculate total energy
+         ETOT=EPONP +SUM(EELAS)
+
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         !Communicate with the head node
+         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+         !Send back Writhe to the head node
+         call MPI_SEND(Wr,1, MPI_DOUBLE_PRECISION, source, 0, &
+             MPI_COMM_WORLD,error )
+
+         !Send back twist energy to the head node
+         call MPI_SEND(EELAS(4),1, MPI_DOUBLE_PRECISION, source, 0, &
+             MPI_COMM_WORLD,error )
+      enddo
+         

@@ -1,0 +1,290 @@
+update-alternatives: error: no alternatives for gfortran
+
+module params
+  use, intrinsic :: iso_fortran_env
+  use, intrinsic :: IEEE_ARITHMETIC
+  IMPLICIT NONE
+
+  private
+  public :: pi, wlcsim_params, wlcsim_data
+
+  ! hardcoded params. will need to change if certain parts of code change
+  integer, parameter :: nMoveTypes = 10 ! number of MC move types
+
+  ! precision of simulations
+  integer, parameter :: dp = real64 ! preferred over SELECTED_real_Kind(15,307)
+
+  ! universal constants
+  real(dp) :: pi = 4 * atan(1.0_dp) ! fully accurate, adaptive precision
+
+  ! for all parameters that cannot change during individual simulations
+  ! these are documented more thoroughly where they are read in (see the
+  ! subroutine get_input_from_file), in the docs (TODO), and often the default
+  ! values will help with understanding how the variable is used.
+
+  type wlcsim_params
+
+     !   Simulation parameters
+     integer nT                ! Total number of beads  NT=NP*N*G
+     integer nB                ! Number of beads in a polymer NB=N*G
+     integer nP                ! Number of polymers
+     real(dp) lp       ! persistence length
+     real(dp) lt       ! twist persistence length
+     real(dp) l0       ! Equilibrium segment length (same as gam)
+     real(dp) l        ! actual length of polymer
+     real(dp) eb     ! Energy of bending
+     real(dp) epar   ! energy "parallel" i.e. psring energy
+     real(dp) eperp  ! energy "perpendicular" i.e. shear energy
+     real(dp) gam    ! average equilibrium interbead spacing
+     real(dp) eta    ! bend-shear coupling parameter
+     real(dp) eps      ! number of kuhn lengths between beads
+     real(dp) del      ! number of persistence lengths between beads
+     real(dp) lhc      !hard-core diameter of lennard-jones repulsion
+     integer LK                ! Linking number
+     integer nLKs      !Number of linking number replicas
+
+     !   Monte Carlo Variables (for adaptation)
+     integer movetypes
+     real(dp) PDesire(nMoveTypes) ! desired hit rate
+     real(dp) MAXWindoW(nMoveTypes)         ! Max Size of window for bead selection
+     real(dp) MINWindoW(nMoveTypes)         ! Min Size of window for bead selection
+     real(dp) MinAMP(nMoveTypes) ! minium amplitude
+     real(dp) MaxAMP(nMoveTypes) ! maximum amplitude
+     integer MOVEON(nMoveTypes)         ! Is the move active
+     integer NADAPT(nMoveTypes) ! Nunber of steps between adapt
+
+     !   Timing variables
+     integer NPT                ! number of steps between parallel tempering
+     integer indMAX             ! total number of save points
+     integer NSTEP              ! steps per save point
+
+     
+    !   Switches
+     logical ring              ! whether the polymer is a ring
+     logical twist             ! whether to include twist (MC only for now)
+     integer ptON              ! is parallel tempering on?
+     logical FRMfile           ! read initial condition R from file
+     logical FRMField          ! read initial field from file
+     logical restart     ! whether we are restarting from a previous sim or not
+
+    !   box size things
+     real(dp) lbox(3)  ! Box length (approximate)
+     
+  end type wlcsim_params
+
+     ! for variables that can change during the simulation
+  type wlcsim_data
+
+     real(dp), allocatable, dimension(:,:):: R   ! Conformation of polymer chains
+     real(dp), allocatable, dimension(:,:):: U   ! Conformation of polymer chains
+     real(dp), allocatable, dimension(:,:):: RP !Test Bead positions - only valid from IT1 to IT2
+     real(dp), allocatable, dimension(:,:):: UP !Test target vectors - only valid from IT1 to IT2
+
+
+     !   Monte Carlo Variables (for adaptation)
+     real(dp) MCAMP(nMoveTypes) ! Amplitude of random change
+     real(dp) WindoW(nMoveTypes)         ! Size of window for bead selection
+     integer SUCCESS(nMoveTypes)        ! Number of successes
+     real(dp) PHit(nMoveTypes) ! hit rate
+
+
+     !   Energys
+     real(dp) Eint     ! running Eint
+     real(dp) EELAS(4) ! Elastic energies
+
+v
+     !   Parallel tempering variables
+     integer rep  ! which replica am I
+     integer id   ! which thread am I
+     integer error  ! MPI error
+
+  end type wlcsim_data
+contains 
+  subroutine set_param_defaults(wlc_p)
+     implicit none
+     type(wlcsim_params), intent(inout) :: wlc_p
+     ! file IO
+     wlc_p%FRMfile=.FALSE.      ! don't load initial bead positions from file
+     wlc_p%restart=.FALSE.      ! don't restart from previously saved simulation
+     
+     ! geometry options
+     wlc_p%NP  =1               ! one polymer
+     wlc_p%nB  =200             ! 200 beads per polymer
+     wlc_p%lp = 1                ! units of lp by default
+     wlc_p%lt = 1                ! twist persistence length equals persistence length by default
+     wlc_p%lk=0                  ! no linking number (lays flat) by default
+     wlc_p%nLKs = 1              ! number of linking number replicas equal to 1
+     wlc_p%lbox(1)=25.0_dp      ! arbitrary box size
+     wlc_p%lbox(2)=25.0_dp
+     wlc_p%lbox(3)=25.0_dp
+
+     ! options
+     wlc_p%movetypes=nMoveTypes
+     wlc_p%ring=.FALSE.    ! not a ring by default
+     wlc_p%twist=.FALSE.    ! don't include twist by default
+
+
+     ! timing options
+     wlc_p%NStep=10000  ! number of steps to take per save point
+     wlc_p%indMAX=100    ! number of save points
+
+     ! replica options
+     wlc_p%PTON=.TRUE.  ! use parallel if applicable
+     wlc_p%NPT=100      ! 100 steps between parallel tempering is pretty frequent
+
+
+   end subroutine set_param_defaults
+
+subroutine read_from_file(infile, wlc_p)
+    use INPUTparaMS, only : readLINE, readA, readF, readI, reado
+    implicit none
+    type(wlcsim_params), intent(inout) :: wlc_p
+    character(fileNameLen), intent(in) :: infile
+    integer pf
+    pf = 1
+    open(unit=PF,file=fileName,status='OLD')
+
+    ! read in the keywords one line at a time
+    do
+       CALL readLINE(PF,fileend,NITEMS)
+       if (fileend.and.nitems.eq.0) EXIT
+
+       ! skip empty lines
+       if (NITEMS.EQ.0) cycle
+
+       ! read in the keyword for this line
+       CALL readA(WORD,CASESET=1)
+
+       ! Skip any empty lines or any comment lines
+       if (WORD(1:1).EQ.'#') cycle
+
+       SELECT CASE(WORD) ! pick which keyword
+       CASE('FRMfile')
+           call reado(wlc_p%FRMfile) ! read configuration from file
+       CASE('TWIST')
+           CALL reado(wlc_p%twist) ! whether to include twist energies in MC
+       CASE('RING')
+           CALL reado(wlc_p%ring) ! whether polymer is a ring or not
+       CASE('LK')
+           CALL reado(wlc_p%lk) ! linking number
+       CASE('PTON')
+           CALL reado(wlc_p%PTON) ! parallel Tempering on
+       CASE('nb')
+           Call readF(wlc_p%nb)  ! actual number of beads we want to simulate
+       CASE('l')
+           Call readF(wlc_p%l)  ! actual length in AU of polymer we want to simulate
+       CASE('lt')
+           Call readF(wlc_p%lt)  ! twist persistence length
+       CASE('lp')
+           Call readF(wlc_p%lp)  ! persistence length
+       CASE('lhc')
+           Call readF(wlc_p%lp)  ! hard-core diameter for lennard jones 
+       CASE('lbox')
+           Call readF(wlc_p%lbox(1)) ! side length of box
+           wlc_p%lbox(2)=wlc_p%lbox(1)
+           wlc_p%lbox(3)=wlc_p%lbox(1)
+       CASE('lboxX')
+           Call readF(wlc_p%lbox(1)) ! side length of box in x direction
+       CASE('lboxY')
+           Call readF(wlc_p%lbox(2)) ! side length of box in y direction
+       CASE('lboxZ')
+           Call readF(wlc_p%lbox(3)) ! side length of box in z direction
+       CASE('NP')
+           CALL readI(wlc_p%NP)  ! Number of polymers
+       CASE('indMAX')
+           Call readI(wlc_p%indMAX) ! total number of save points
+       CASE('NSTEP')
+           Call readI(wlc_p%NStep) ! steps per save point
+       CASE('NPT')
+           Call readI(wlc_p%NPT) ! number of steps between parallel tempering
+       CASE('CRANK_SHAFT_ON')
+           Call readI(wlc_p%MOVEON(1)) ! is Crank shaft move on 1/0
+       CASE('SLIDE_ON')
+           Call readI(wlc_p%MOVEON(2)) ! is Slide move on 1/0
+       CASE('PIVOT_ON')
+           Call readI(wlc_p%MOVEON(3)) ! is Pivot move on 1/0
+       CASE('ROTATE_ON')
+           Call readI(wlc_p%MOVEON(4)) ! is single bead rotate on 1/0
+       CASE('FULL_CHAIN_ROTATION_ON')
+           Call readI(wlc_p%MOVEON(5)) ! is full chain rotate on 1/0
+       CASE('FULL_CHAIN_SLIDE_ON')
+           Call readI(wlc_p%MOVEON(6)) ! is full chain slide on 1/0
+       CASE('MIN_CRANK_SHAFT_WIN')
+           Call readF(wlc_p%MINWindoW(1)) ! min mean window size
+       CASE('MIN_SLIDE_WIN')
+           Call readF(wlc_p%MINWindoW(2))
+       CASE('MIN_PIVOT_WIN')
+           Call readF(wlc_p%MINWindoW(3))
+       CASE('RESTART')
+           call reado(wlc_p%restart) ! Restart from parallel tempering
+       CASE DEFAULT
+           print*, "Error in MCvar_setparams.  Unidentified keyword:", &
+                   TRIM(WORD)
+           stop 1
+       endSELECT
+    enddo
+    close(pf)
+end subroutine read_from_file
+
+subroutine get_input_from_file(infile, wlc_p)
+! Based on Elena's readkeys subroutine
+    IMPLICIT NONE
+    type(wlcsim_params), intent(out) :: wlc_p
+    character(1024), intent(in) :: infile  ! file with parameters
+    integer :: PF   ! input file unit
+    LOGICAL :: fileend = .FALSE. ! done reading file?
+    CHARACTER*100 :: WORD ! parameter name currently being read in
+    integer :: NITEMS ! number of items on the line in the parameter file
+
+    call set_param_defaults(wlc_p)
+
+    call read_from_file(infile, wlc_p)
+
+    ! get derived parameters that aren't directly input from file
+    call getpara(wlc_p)
+
+end subroutine
+
+
+subroutine initialize_wlcsim_data(wlc_d, wlc_p)
+    implicit none
+    type(wlcsim_params), intent(inout)  :: wlc_p
+    type(wlcsim_data), intent(inout)   :: wlc_d
+
+    !Calculate total number of beads
+    wlc_p%nT = nB*nP             
+
+    ! initialize energies to zero
+    wlc_d%EElas=0.0_dp
+    wlc_d%Eint = 0.0_dp
+
+    ! initialize windows to number of beads
+    wlc_p%MAXWindoW = nB         ! Max Size of window for bead selection
+    wlc_p% MINWindoW  = 1         ! Min Size of window for bead selection
+
+    ! Window amplitudes
+    wlc_p%MinAMP = 0.0_dp ! minium amplitude
+    wlc_p%MinAMP(1) = 0.07_dp*pi
+    wlc_p%MinAMP(2) = 0.01_dp*wlc_d%l/wlc_p%nB
+    wlc_p%MaxAMP = 2.0_dp*pi
+    wlc_p%MaxAMP(2) = wlc_p%lbox(1)
+    wlc_p%MaxAMP(6) = wlc_p%lbox(1)
+
+
+subroutine MCvar_allocate(mc,md)
+    IMPLICIT NONE
+    type(wlcsim_params), intent(inout) :: wlc_p
+    type(wlcsim_data), intent(inout) :: wlc_d
+    integer NT  ! total number of beads
+    integer NP  ! total number of polymers
+    integer NBIN ! total number of bins
+
+    NT = wlc_p%nT
+    NP = wlc_p%nP
+
+    ALLOCATE(wlc_d%R(NT,3))
+    ALLOCATE(wlc_d%U(NT,3))
+
+end subroutine
+
+end module params

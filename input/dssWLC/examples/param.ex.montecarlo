@@ -1,0 +1,33 @@
+# -----------------
+# Run a monte-carlo simulation to sample chain configurations
+# -----------------
+ACTION montecarlo
+# seed random number generator off system time
+RNGSEED 0
+
+# 4 segments (so 5 beads)
+NPT 151
+
+# chain is stretchable, shearable, and has bend-shear coupling
+STRETCHABLE T
+SHEARABLE T
+COUPLED T
+# chain energetic parameters
+LS   2.0000000000000000E-002
+LP   1.0000000000000000
+GAM  0.99683438356545739
+EPAR   19388.526883331935
+EPERP   56994.796313523548
+EC  -180.14626873091655
+
+# Run 10^8 monte carlo steps, taking average statistics every 1000 steps
+# first 500000 steps are for initialization only
+MCSTEPS 100000000 1000 500000
+# print output to screen every 100000 steps, to file every 1000 steps
+MCPRINTFREQ 1000000 100000
+# adjust step size every 50000 steps
+# attempts to keep an acceptance ratio of 50% +/- 10%
+# adjusts by a factor of 2 each time
+ADJUSTRANGE 50000 0.5 0.1 2
+# initial step size
+INITRANGE 1 1D-1 1 1D-1

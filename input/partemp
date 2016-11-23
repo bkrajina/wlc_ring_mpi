@@ -1,0 +1,20 @@
+ ! ----------------------------------------------------
+ !Input file for parallel tempering algorithm
+
+ !-Record 1
+ !  PARTEMPON       Parallel tempering on? (1 or 0)
+  0
+
+ !-Record 2
+ !  LKMIN	    Minimum LK for parallel tempering
+  0
+
+ !-Record 3
+ !  LKMAX           Maximum LK for parallel tempering
+  1
+
+ !-Record 4
+ ! LKSTEP           Step size in LK for parallel tempering
+  1
+
+ 

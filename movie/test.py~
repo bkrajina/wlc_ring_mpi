@@ -1,0 +1,21 @@
+import pymol
+from pymol import cmd
+from pymol import movie
+from sys import argv
+
+
+#Make a movie from a folder that contains a set of pdb files
+
+def make_movie(foldername):
+    cmd.delete(all)
+    movie.load(foldername + '/snap*','snap')
+    cmd.hide("all")
+    cmd.set("stick_radius",1.0)
+    cmd.show("spheres", 'name A1')
+    cmd.color('blue','name A1')
+    cmd.alter('name A1', 'vdw = 3.0')
+    cmd.show("sticks", 'name A1')
+    cmd.rebuild()
+    cmd.bg_color("white")
+    cmd.reset()
+cmd.extend("make_movie",make_movie)

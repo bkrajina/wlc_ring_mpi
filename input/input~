@@ -1,0 +1,84 @@
+ ! ----------------------------------------------------
+ !Input file for polymer simulation package
+
+ !-Record 1
+ !  LP              Persistence length
+  50.
+
+ !-Record 2
+ !  lt	            Twist persistence length
+  70.
+
+ !-Record 3
+ !  L               Chain length
+  340.0
+
+ !-Record 4
+ ! Lk               Linking number
+  -80
+
+ !-Record 5
+ !  LBOX            Box edge length
+  10.
+
+ !-Record 6
+ !  LHC             Hard-core length
+  2.0
+
+ !-Record 7
+ !  VHC             Hard-core int strength
+  1.
+
+ !-Record 8
+ !  N               Number of beads
+  25
+ 
+ !-Record 9
+ !  NP              Number of polymers
+  1
+
+ !-Record 10
+ !  TF              Total simulation time
+  0.01
+
+ !-Record 11
+ !  INDMAX          Total number of save points
+  100
+
+ !-Record 12
+ !  DT              Timestep for integration
+  0.00002
+
+ !-Record 13
+ !  FRMFILE         Load in the inital conf?
+  0
+
+ !-Record 14
+ !  BROWN           Include Brownian forces?
+  1
+
+ !-Record 15
+ !  INTON           Include polymer interactions?
+  1
+
+ !-Record 16
+ ! RING	            Is polymer a ring?
+  1
+
+ !-Record 17
+ ! TWIST	    Include twist?
+  1
+
+ !-Record 18
+ !  LOGTIME         Are data recorded in log time?
+  1
+
+ !-Record 19
+ !  NINIT          Number initialization MC steps
+  1000000
+
+ !-Record 20
+ !  NSTEP          Number MC steps per save
+  1000
+
+ ! ----------------------------------------------------

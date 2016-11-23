@@ -1,0 +1,109 @@
+ ! ----------------------------------------------------
+ !Input file for polymer simulation package
+
+
+ !-Record 1
+ ! MINAMP1          Min amplitude of crankshaft  move
+  0.1
+
+ !-Record 2
+ ! MINAMP2	    Min amplitude of slide move
+  70.
+
+ !-Record 3
+ ! MINAMP3          Min amplitude of pivot move
+  1972.
+
+ !-Record 4
+ ! MINAMP4          Min amplitude of rotate move
+   -50
+
+ !-Record 5
+ ! MINAMP5          Min amplitude of total chain slide
+  30.
+
+ !-Record 6
+ ! MINAMP6          Min amplitude of total chain rotation
+  1.0
+
+ !-Record 7
+ ! MAXAMP1          Max amplitude of crankshaft  move
+  0.1
+
+ !-Record 8
+ ! MAXAMP2	    Max amplitude of slide move
+  70.
+
+ !-Record 9	
+ ! MAXAMP3          max amplitude of pivot move
+  1972.
+
+ !-Record 4
+ ! MINAMP4          Min amplitude of rotate move
+   -50
+
+ !-Record 5
+ ! MINAMP5          Min amplitude of total chain slide
+  30.
+
+ !-Record 6
+ ! MINAMP6          Min amplitude of total chain rotation
+  1.0		    
+
+ !-Record 7
+ !  VHC             Hard-core int strength
+  1.
+
+ !-Record 8
+ !  N               Number of beads
+  100  
+ 
+ !-Record 9
+ !  NP              Number of polymers
+  1
+
+ !-Record 10
+ !  TF              Total simulation time
+  0.01
+
+ !-Record 11
+ !  INDMAX          Total number of save points
+  1
+
+ !-Record 12
+ !  DT              Timestep for integration
+  0.00002
+
+ !-Record 13
+ !  FRMFILE         Load in the inital conf?
+  0
+
+ !-Record 14
+ !  BROWN           Include Brownian forces?
+  1
+
+ !-Record 15
+ !  INTON           Include polymer interactions?
+  1
+
+ !-Record 16
+ ! RING	            Is polymer a ring?
+  1
+
+ !-Record 17
+ ! TWIST	    Include twist?
+  1
+
+ !-Record 18
+ !  LOGTIME         Are data recorded in log time?
+  1
+
+ !-Record 19
+ !  NINIT          Number initialization MC steps
+  1
+
+ !-Record 20
+ !  NSTEP          Number MC steps per save
+  1
+
+ ! ----------------------------------------------------
