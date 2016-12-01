@@ -5,4 +5,4 @@ rm ../data/*
 rm ../data/*/*
 cd ../
 mv src/wlcsim ./
-mpirun -np 6 ./wlcsim
+mpirun -np 5 ./wlcsim

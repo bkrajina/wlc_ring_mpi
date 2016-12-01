@@ -2,7 +2,7 @@ delete *
 reset
 
 
-movie.load pdb/LK_5/snap*.pdb,snap
+movie.load pdb/LK_1/snap*.pdb,snap
 
 hide all
 

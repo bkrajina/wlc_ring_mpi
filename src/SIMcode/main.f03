@@ -61,7 +61,16 @@ program main
   !Perform an initialization Monte Carlo simulation
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+  if (wlc_d%id.eq.0) then
+     print *, 'run initialization monte carlo'
+  endif
+
   call wlcsim_init(wlc_p,wlc_d)
+
+  if (wlc_d%id.eq.0) then
+     print *, 'finished initialization monte carlo'
+     print *, '************************************'
+  endif
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !Loop over Monte Carlo simulations

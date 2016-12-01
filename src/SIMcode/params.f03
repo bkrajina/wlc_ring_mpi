@@ -97,7 +97,7 @@ module params
      real(dp) PHit(nMoveTypes) ! hit rate
 
      !   Energys
-     real(dp) Eint     ! running Eint
+     real(dp) Eint     ! running interaction energy
      real(dp) EELAS(4) ! Elastic energies
 
      !Storged simulation trajectories
@@ -331,11 +331,11 @@ subroutine idiot_checks(wlc_d,wlc_p)
   !of processes if parallel tempering is on
   if (wlc_p%ptON) then
      if (wlc_p%nLKs+1.ne.wlc_d%p) then
-        print *, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-        print *, 'number of threads not equal to number of replicas!'
+        print *, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        print *, 'number of threads must be equal to number of replicas plus one'
         print *, 'exiting...'
         print *, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-        call exit()
+        stop
      endif
   endif
 endsubroutine
@@ -572,6 +572,11 @@ subroutine save_configuration(wlc_p,wlc_d,ind)
 
   !parallel tempering on
    if (wlc_p%ptON) then
+
+      !!!!!!!!!!!!!!!!!!!!!!!!
+      !Save r and u
+      !!!!!!!!!!!!!!!!!!!!!!!!
+
       !Determine the folder to save in
       write(lkSTRING,*) wlc_p%lk
       write(savefile,*) 'data/LK_'//TRIM(ADJUSTL(lkSTRING))
@@ -586,6 +591,44 @@ subroutine save_configuration(wlc_p,wlc_d,ind)
       enddo
       close(1)
       close(2)
+
+
+      
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !Append writhe squared radius of gyration and energies to trajctory file
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+      !calculate rgsq and polymer repulsive interaction energy (writhe and eelas already calculated
+      !in wlcsim)
+
+      call getRG(wlc_p,wlc_d,rgsq)
+
+      if (wlc_p%inton.eq.1) then
+         call ENERGY_SELF_CHAIN(wlc_d%Eint,wlc_d%R,wlc_p%nT,wlc_p%nB,wlc_p%LHC,wlc_p%VHC,wlc_p%RING)
+      endif
+
+      !save variables
+      open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/wr', status = 'unknown', position = 'append')
+      write(1,*) wlc_d%Wr
+      close(1)
+
+      open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/rgsq', status = 'unknown', position = 'append')
+      write(1,*) rgsq
+      close(1)
+
+      open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/EELAS', status = 'unknown', position = 'append')
+      write(1,*) wlc_d%EELAS
+      close(1)
+
+     
+      if (wlc_p%inton.eq.1) then
+         open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/Eint', status = 'unknown', position = 'append')
+         write(1,*) wlc_d%Eint
+         close(1)
+      endif
+      
+
+
   else
      write(savefile,*) 'data/'
      write(fileIND,*) ind
@@ -599,16 +642,42 @@ subroutine save_configuration(wlc_p,wlc_d,ind)
      enddo
      close(1)
      close(2)
+     
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     !Append writhe squared radius of gyration and energies to trajctory file
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     
+     !calculate rgsq and polymer repulsive interaction energy (writhe and eelas already calculated
+     !in wlcsim)
+     
+     call getRG(wlc_p,wlc_d,rgsq)
+
+     if (wlc_p%inton.eq.1) then
+        call ENERGY_SELF_CHAIN(wlc_d%Eint,wlc_d%R,wlc_p%nT,wlc_p%nB,wlc_p%LHC,wlc_p%VHC,wlc_p%RING)
+     endif
+
+     !save variables
+     open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/wr', status = 'unknown', position = 'append')
+     write(1,*) wlc_d%Wr
+     close(1)
+
+     open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/rgsq', status = 'unknown', position = 'append')
+     write(1,*) rgsq
+     close(1)
+
+     open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/EELAS', status = 'unknown', position = 'append')
+     write(1,*) wlc_d%EELAS
+     close(1)
+
+
+     if (wlc_p%inton.eq.1) then
+        open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/Eint', status = 'unknown', position = 'append')
+        write(1,*) wlc_d%Eint
+        close(1)
+     endif
+
+
   endif
-
-
-  !Calculate the radius of gyration squared
-  call getRG(wlc_p,wlc_d,rgsq)
-
-  wlc_d%rgsqTRAJ(ind) = rgsq
-
-  !Update vector of writhe 
-  wlc_d%wrTRAJ(ind) = wlc_d%wr
 
 end subroutine save_configuration
 
@@ -628,7 +697,72 @@ subroutine save_stats(wlc_p,wlc_d)
   !Variables for saving
   character(1024) savefile
   character(1024) lkSTRING
+  !counting variables
+  integer SaveInd
 
+  !Load Wr and rgsq from their trajectory files
+
+  !Cases
+  !ptON = .TRUE. - head node does not load and replicas load from their directories
+  !ptON = .FALSE. node loads directly from data directory
+
+  if (wlc_p%ptON) then
+
+     !only worker nodes get their trajectories
+     if (wlc_d%id.ne.0 ) then
+        !Determine the folder to load from
+        
+        write(lkSTRING,*) wlc_p%lk
+        write(savefile,*) 'data/LK_'//TRIM(ADJUSTL(lkSTRING))
+
+        !Read into writhe trajectory
+
+        open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/wr', status = 'old')
+
+        do SaveInd = 1,wlc_p%indMAX
+           read(1,*) wlc_d%wrTRAJ(SaveInd)
+        enddo
+
+        close(1)
+
+        !Read into rgsq trajectory
+
+        open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/rgsq', status = 'old')
+
+        do SaveInd = 1,wlc_p%indMAX
+           read(1,*) wlc_d%rgsqTRAJ(SaveInd)
+        enddo
+
+        close(1)
+        
+     endif
+
+     
+  else
+     !Parallel tempering not on
+
+        !Read into writhe trajectory
+
+        open(unit = 1, file = 'data/wr', status = 'old')
+
+        do SaveInd = 1,wlc_p%indMAX
+           read(1,*) wlc_d%wrTRAJ(SaveInd)
+        enddo
+
+        close(1)
+
+        !Read into rgsq trajectory
+
+        open(unit = 1, file = 'data/rgsq', status = 'old')
+
+        do SaveInd = 1,wlc_p%indMAX
+           read(1,*) wlc_d%rgsqTRAJ(SaveInd)
+        enddo
+
+        close(1)
+     
+
+  endif
 
   !calculate average quantities
   wrAVG = sum(wlc_d%wrTRAJ)/dble(wlc_p%indMAX)

@@ -31,8 +31,9 @@ subroutine replicaEXCHANGE(wlc_p,wlc_d)
   real urand(1)       !random number for exchange
   real(dp) prob               !probability of exchange
   integer tempLK
-  
-  
+  integer dest
+  integer (kind = 4) error
+  integer LK
   !Loop over every other replica and check for it to exchange with the one above it
   !For the replica exchange, each replica keeps its polymer conformation, and exchanges
   !linking number
@@ -59,10 +60,13 @@ subroutine replicaEXCHANGE(wlc_p,wlc_d)
      prob = exp(-deEXCHANGE)
 
      !Exchange linking numbers according to Metropolis-Hastings criterion
+     !This means that the node number associated with each LK is swapped
      if (urand(1).le.prob) then
-        tempLK = wlc_p%LKs(rep)
-        wlc_p%LKs(rep) = wlc_p%LKs(rep + 1)
-        wlc_p%LKs(rep + 1) = tempLK
+        !Erroneous code? Lk vector should be fixed to ensure swaps occur
+        !with LK above and below
+!        tempLK = wlc_p%LKs(rep)
+!        wlc_p%LKs(rep) = wlc_p%LKs(rep + 1)
+!        wlc_p%LKs(rep + 1) = tempLK
         tempLK = wlc_d%nodeNUMBER(rep)
         wlc_d%nodeNUMBER (rep) = wlc_d%nodeNUMBER (rep+1)
         wlc_d%nodeNUMBER(rep+1) = tempLK
@@ -86,6 +90,16 @@ subroutine replicaEXCHANGE(wlc_p,wlc_d)
   else
      wlc_d%replicaEND = wlc_p%nLKs -1
   endif
+
+  !Tell nodes their new LKs
+
+  do rep = 1,wlc_p%nLKs
+     LK = wlc_p%LKs(rep)
+     dest = wlc_d%nodeNUMBER(rep)
+     call MPI_Send (LK,1, MPI_INTEGER, dest,   0, &
+          MPI_COMM_WORLD,error )
+  enddo
+
 
 end subroutine replicaEXCHANGE
 
@@ -205,6 +219,13 @@ subroutine wlcsim(wlc_p,wlc_d)
                 MPI_COMM_WORLD,error )
            call MPI_SEND(wlc_d%eelas,4, MPI_DOUBLE_PRECISION, source, 0, &
                 MPI_COMM_WORLD,error )
+
+
+           !Receive new LKs from the head node after replica exchange
+           source = 0
+           call MPI_Recv(LK,1, MPI_INTEGER, source,   0, &
+                MPI_COMM_WORLD,status,error )
+           wlc_p%LK = LK
            
         enddo
      endif
@@ -217,6 +238,12 @@ subroutine wlcsim(wlc_p,wlc_d)
           wlc_p%epar,wlc_p%eperp,wlc_p%gam,wlc_p%eta, wlc_p%lhc,wlc_p%vhc,wlc_p%lbox, &
           wlc_d%MCAMP,wlc_d%SUCCESS,wlc_d%successTOTAL,wlc_p%MOVEON,&
           wlc_d%WINDOW,wlc_p%RING,wlc_p%TWIST,wlc_p%Lk,wlc_p%LT,wlc_p%LP,wlc_p%L,wlc_d%rand_stat)
+
+     !Recalculate structural quantities and energies
+     call writhe(wlc_d%R,wlc_p%nB, wlc_d%Wr)
+     call energy_elas(wlc_d%eelas,wlc_d%R,wlc_d%U,wlc_p%nT,wlc_p%nB,wlc_p%nP,wlc_p%eb,wlc_p%epar, &
+          wlc_p%eperp,wlc_p%gam,wlc_p%eta,wlc_p%RING,wlc_p%twist,wlc_p%LK,wlc_p%lt,wlc_p%lp,wlc_p%l)
+
   end if
 end subroutine wlcsim
         

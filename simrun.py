@@ -47,7 +47,7 @@ def write_input(outfile,templatefile, params):
 
 
 #Set the LKs for the simulation
-LKs = [0]
+LKs = [0,1,2,3]
 np.savetxt('input/LKs',LKs, fmt = '%i')
 
 
@@ -61,13 +61,15 @@ for lk in LKs:
 #compile the simulation
 os.system('./compile.sh')
 
-NINIT = 100
-L = 1000.0
+NINIT = 1000
+L = 340.
+NB = 25
 NSTEP = 100
-INDMAX = 10
-PTON = 'F'
+NREPLICAEXCHANGE = 10
+INDMAX = 100
+PTON = 'T'
 LK = 0
-params = {'NINIT':NINIT, 'L': L,'INDMAX':INDMAX,'NSTEP':NSTEP, 'PTON':PTON, 'LK':LK}
+params = {'NINIT':NINIT, 'L': L,'INDMAX':INDMAX,'NSTEP':NSTEP, 'PTON':PTON, 'LK':LK, 'NREPLICAEXCHANGE': NREPLICAEXCHANGE, 'NB' : NB}
 
 write_input('input/input','input/template',params)
 

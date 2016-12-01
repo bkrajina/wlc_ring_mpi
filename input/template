@@ -1,36 +1,36 @@
-
 #####################################
 #Polymer properties
 #Length of polymer chain
 L 100.0
+#Twist Persistence length
+LT 70.0
 #Persistence length
 LP 50.0
-#Twist persistence length
-LT 70.0
+#Number of polymers
+NP 1
 #Number of beads to represent polymer
 NB 100
+#Include polymer steric repulsion interactions?
+INTON 1
 #Is polymer a ring (1 or 0)
 RING 1
 #Include twist energy (1 or 0)?
 TWIST 1
+#Strength of steric repulsion (normalized to kT)
+VHC 1.0
+#Hard-core repulsion diameter
+LHC 2.0
 #Polymer linking number (integer)
 LK 0
-#Include polymer steric repulsion interactions?
-INTON 1
-#Strength of steric repulsion (normalized to kT)
-VHC = 1.0
-#Hard-core repulsion diameter
-LHC = 2.0
 #####################################
 #Simulation settings
+#Number of Initialization Monte Carlo steps
+NINIT 1000000
 #Number of saves
 INDMAX 100
-#Number of Initialization Monte Carlo steps
-NINIT 100000
+#Number of replica exchanges to perform between saves
+NREPLICAEXCHANGE 10
+#Number of steps between replica exchanges
+NSTEP 1000
 #Include parallel tempering (T OR F) ?
 PTON T
-#Number of Monte Carlo steps to perform between saves (or between replica exchange if ptON)
-NSTEP 1000
-#Number of replica exchanges to perform between saves
-NREPLICAEXCHANGE 1
-
