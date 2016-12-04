@@ -158,7 +158,7 @@ contains
      wlc_p%indMAX=100    ! number of save points
      wlc_p%nREPLICAexchange = 1 !number of replica exchanges between save point
      ! replica options
-     wlc_p%PTON=.TRUE.  ! use parallel if applicable
+     wlc_p%PTON=.FALSE.  !don't parallel temper by default
      wlc_p%NPT=100      ! 100 steps between parallel tempering is pretty frequent
      
      !move options
@@ -577,57 +577,60 @@ subroutine save_configuration(wlc_p,wlc_d,ind)
       !Save r and u
       !!!!!!!!!!!!!!!!!!!!!!!!
 
-      !Determine the folder to save in
-      write(lkSTRING,*) wlc_p%lk
-      write(savefile,*) 'data/LK_'//TRIM(ADJUSTL(lkSTRING))
-      write(fileIND,*) ind
-       !open file and write polymer configuration
-      open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/r'//TRIM(ADJUSTL(fileIND)))
-      open(unit = 2, file = TRIM(ADJUSTL(savefile))//'/u'//TRIM(ADJUSTL(fileIND)))
+      !Head node does not save configuration
       
-      do i = 1,wlc_p%nT
-         write(1,*) wlc_d%r(i,:)
-         write(2,*) wlc_d%u(i,:)
-      enddo
-      close(1)
-      close(2)
+      if (wlc_d%id.ne.0) then
+         !Determine the folder to save in
+         write(lkSTRING,*) wlc_p%lk
+         write(savefile,*) 'data/LK_'//TRIM(ADJUSTL(lkSTRING))
+         write(fileIND,*) ind
+         !open file and write polymer configuration
+         open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/r'//TRIM(ADJUSTL(fileIND)))
+         open(unit = 2, file = TRIM(ADJUSTL(savefile))//'/u'//TRIM(ADJUSTL(fileIND)))
 
-
-      
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !Append writhe squared radius of gyration and energies to trajctory file
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-      !calculate rgsq and polymer repulsive interaction energy (writhe and eelas already calculated
-      !in wlcsim)
-
-      call getRG(wlc_p,wlc_d,rgsq)
-
-      if (wlc_p%inton.eq.1) then
-         call ENERGY_SELF_CHAIN(wlc_d%Eint,wlc_d%R,wlc_p%nT,wlc_p%nB,wlc_p%LHC,wlc_p%VHC,wlc_p%RING)
-      endif
-
-      !save variables
-      open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/wr', status = 'unknown', position = 'append')
-      write(1,*) wlc_d%Wr
-      close(1)
-
-      open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/rgsq', status = 'unknown', position = 'append')
-      write(1,*) rgsq
-      close(1)
-
-      open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/EELAS', status = 'unknown', position = 'append')
-      write(1,*) wlc_d%EELAS
-      close(1)
-
-     
-      if (wlc_p%inton.eq.1) then
-         open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/Eint', status = 'unknown', position = 'append')
-         write(1,*) wlc_d%Eint
+         do i = 1,wlc_p%nT
+            write(1,*) wlc_d%r(i,:)
+            write(2,*) wlc_d%u(i,:)
+         enddo
          close(1)
-      endif
-      
+         close(2)
 
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         !Append writhe squared radius of gyration and energies to trajctory file
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+         !calculate rgsq and polymer repulsive interaction energy (writhe and eelas already calculated
+         !in wlcsim)
+
+         call getRG(wlc_p,wlc_d,rgsq)
+
+         if (wlc_p%inton.eq.1) then
+            call ENERGY_SELF_CHAIN(wlc_d%Eint,wlc_d%R,wlc_p%nT,wlc_p%nB,wlc_p%LHC,wlc_p%VHC,wlc_p%RING)
+         endif
+
+         !save variables
+         open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/wr', status = 'unknown', position = 'append')
+         write(1,*) wlc_d%Wr
+         close(1)
+
+         open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/rgsq', status = 'unknown', position = 'append')
+         write(1,*) rgsq
+         close(1)
+
+         open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/EELAS', status = 'unknown', position = 'append')
+         write(1,*) wlc_d%EELAS
+         close(1)
+
+
+         if (wlc_p%inton.eq.1) then
+            open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/Eint', status = 'unknown', position = 'append')
+            write(1,*) wlc_d%Eint
+            close(1)
+         endif
+
+      endif
 
   else
      write(savefile,*) 'data/'

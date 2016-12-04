@@ -11,9 +11,9 @@ output_folder = 'pdb'
 #define topology ('linear' or 'circular')
 topo = 'circular'
 #define index range for coordinate files
-file_inds = range(1,101,1)
+file_inds = range(1,21,1)
 #Define range of linking numbers
-LKs = range(0,4)
+LKs = range(0,3)
 
 #loop over files and save to pdb
 for lk in LKs:

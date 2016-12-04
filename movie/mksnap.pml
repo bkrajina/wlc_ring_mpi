@@ -2,7 +2,7 @@ delete *
 reset
 
 
-movie.load pdb/LK_1/snap*.pdb,snap
+movie.load pdb/LK_0/snap*.pdb,snap
 
 hide all
 
@@ -23,7 +23,7 @@ rebuild
 bg_color white
 reset
 
-zoom 
+zoom center 200
 #cd ../png
 #set ray_trace_frames = 1
 #mpng snap

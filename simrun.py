@@ -61,11 +61,11 @@ for lk in LKs:
 #compile the simulation
 os.system('./compile.sh')
 
-NINIT = 1000
-L = 340.
-NB = 25
+NINIT = 100
+L = 1000.
+NB = 100
 NSTEP = 100
-NREPLICAEXCHANGE = 10
+NREPLICAEXCHANGE = 100
 INDMAX = 100
 PTON = 'T'
 LK = 0

@@ -52,12 +52,35 @@ SUBROUTINE initcond(R,U,NT,N,NP,FRMFILE,GAM,LBOX,RING,rand_stat)
   else
      IB=1
      DO  I=1,NP
-        call random_number(urand,rand_stat)
-        R0(1)=urand(1)*lbox(1)
-        call random_number(urand,rand_stat)
-        R0(2)=urand(1)*lbox(2)
-        call random_number(urand,rand_stat)
-        R0(3)=urand(1)*lbox(3)
+
+        !Cases
+        !NP > 1
+        !NP = 1
+        !If there are multiple polymers, initialize first bead randomly in the box
+        !If there is one, put it in the middle of the box
+
+        if (NP.GT.1) then
+           call random_number(urand,rand_stat)
+           R0(1)=urand(1)*lbox(1)
+           call random_number(urand,rand_stat)
+           R0(2)=urand(1)*lbox(2)
+           call random_number(urand,rand_stat)
+           R0(3)=urand(1)*lbox(3)
+        else
+
+           R0(1) = lbox(1)/(0.5d0)
+           R0(2) = lbox(2)/(0.5d0)
+           R0(3) = lbox(3)/(0.5d0)
+        endif
+
+        !Generate the initial chain configuration
+        !Cases
+        !RING = 0
+        !RING = 1
+
+        !If not a ring, initialize as a straight line
+        !If a ring, initialize as a circle
+
         DO  J=1,N
            IF (RING.EQ.0) THEN
               R(IB,1)=R0(1)

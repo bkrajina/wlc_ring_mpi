@@ -8,13 +8,12 @@ rc('xtick',labelsize=18.)
 rc('ytick',labelsize=18.)
 
 sns.set_style('ticks')
-Lks = range(0,6)
-lk0 = (1.e4)/10.5
+Lks = range(0,4)
+lk0 = (914.)/10.5
 Rgs = []
 
-
 for lk in Lks:
-    Rgs.append(np.loadtxt('data/LK_%s/RGYRSQ_Avg' %(lk))**0.5)
+    Rgs.append(np.loadtxt('data/LK_%s/rgsqAVG' %(lk))**0.5)
 
 sig = np.array(Lks)/lk0
 
