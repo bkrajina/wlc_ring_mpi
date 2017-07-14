@@ -3,22 +3,21 @@
 !     This subroutine performs a Monte Carlo simulation on the 
 !     polymer chain.
       
-SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
+SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,INTON,EB,EPAR,EPERP,GAM,ETA,LHC,VHC,LBOX, &
      MCAMP,SUCCESS,SUCCESS_TOTAL,MOVEON,WINDOW,RING,TWIST,Lk,LT,LP,L,stat)
 
   use mersenne_twister
   IMPLICIT NONE
-  
-  
+
+
   DOUBLE PRECISION, PARAMETER :: PI=3.141592654D0 ! Value of pi
-  
+
   DOUBLE PRECISION R(NT,3)  ! Bead positions
   DOUBLE PRECISION U(NT,3)  ! Tangent vectors
   DOUBLE PRECISION RP(NT,3)  ! Bead positions
   DOUBLE PRECISION UP(NT,3)  ! Tangent vectors
   INTEGER N,NP,NT           ! Number of beads
   INTEGER NSTEP             ! Number of MC steps
-  INTEGER BROWN            ! Turn on fluctuations
   INTEGER INTON             ! Include polymer interactions
   INTEGER RING              ! Is polymer a ring?
   INTEGER TWIST             ! Include twist?
@@ -83,10 +82,9 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
   DOUBLE PRECISION XIR,XIU
   DOUBLE PRECISION LT       ! Twist persistence length
   DOUBLE PRECISION LP       ! Bend persistence length
-  DOUBLE PRECISION LBOX     ! Box edge length
+  DOUBLE PRECISION lbox(3)     ! Box edge length
   DOUBLE PRECISION LHC      ! Length of HC int
   DOUBLE PRECISION VHC      ! HC strength
-  DOUBLE PRECISION PARA(10)
   DOUBLE PRECISION WR       ! Writhe of current structure
   DOUBLE PRECISION WRP      ! Writhe of test structure
 
@@ -94,18 +92,6 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
   type(random_stat) stat  ! state of random number chain
 
   !     Load the input parameters
-
-  EB=PARA(1)
-  EPAR=PARA(2)
-  EPERP=PARA(3)
-  GAM=PARA(4)
-  ETA=PARA(5)
-  XIR=PARA(6)
-  XIU=PARA(7)
-  LBOX=PARA(8)
-  LHC=PARA(9)
-  VHC=PARA(10)
-
   !     Set-up MC Adaptation variables
 
   MINAMP(1)=0.07*2*PI
@@ -116,13 +102,13 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
   MINAMP(6)=0.01
 
   MAXAMP(1)=2.*PI
-  MAXAMP(2)=LBOX
+  MAXAMP(2)=lbox(1)
   MAXAMP(3)=2.*PI
   MAXAMP(4)=2.*PI
   MAXAMP(5)=2.*PI
-  MAXAMP(6)=LBOX
+  MAXAMP(6)=lbox(1)
 
-  WINDOW_MAX=N/2
+  WINDOW_MAX=N/4
 
   NADAPT(1)=1000
   NADAPT(2)=1000
@@ -176,7 +162,7 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
   ALLOCATE(Cross(CrossSize,6))
   ALLOCATE(CrossP(CrossSize,6))
 
-  
+
   !     Get initial value of Alexander polynomial and Cross matrix
   NCross=0
   CALL ALEXANDERP(R,N,DELTA,Cross,CrossSize,NCross)
@@ -194,7 +180,7 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
         endif
 
 
-       CALL MC_move_new(R,U,RP,UP,NT,N,NP,IP,IB1,IB2,IT1,IT2,MCTYPE,MCAMP,WINDOW,RING,DIB,stat)
+        CALL MC_move(R,U,RP,UP,NT,N,NP,IP,IB1,IB2,IT1,IT2,MCTYPE,MCAMP,WINDOW,RING,DIB,stat)
 
 
         !     If chain is a ring, calculate the alexander polynomial evaluated at t=-1. Reject the move if the chain becomes knotted (DELTA.NE.1)
@@ -226,11 +212,11 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
 
         IF (INTON.EQ.1) THEN
            IF (MCTYPE.EQ.1) THEN
-              CALL DE_SELF_CRANK(DESELF,R,RP,NT,N,NP,PARA,RING,IB1,IB2)
+              CALL DE_SELF_CRANK(DESELF,R,RP,NT,N,NP,LHC,VHC,RING,IB1,IB2)
 
            ELSEIF (MCTYPE.EQ.2) THEN
-              CALL ENERGY_SELF_SLIDE(ESELF,R,NT,N,NP,PARA,RING,IB1,IB2)
-              CALL ENERGY_SELF_SLIDE(ESELFP,RP,NT,N,NP,PARA,RING,IB1,IB2)
+              CALL ENERGY_SELF_SLIDE(ESELF,R,NT,N,NP,LHC,VHC,RING,IB1,IB2)
+              CALL ENERGY_SELF_SLIDE(ESELFP,RP,NT,N,NP,LHC,VHC,RING,IB1,IB2)
 
 
               DESELF=ESELFP-ESELF
@@ -247,12 +233,9 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
 
         PROB= exp(-ENERGY)
 
-        if (BROWN.EQ.1) then
-           call random_number(TEST,stat)
-        else
-           TEST =1.
 
-        endif
+        call random_number(TEST,stat)
+        
         if (TEST(1).LE.PROB) then
 
            DO  I=N*(IP-1)+1,N*IP
@@ -263,74 +246,61 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,BROWN,INTON,IDUM,PARA, &
               U(I,2)=UP(I,2)
               U(I,3)=UP(I,3)
            ENDDO
-              WR=WRP
-              NCross=NCrossP
-              Cross=CrossP
+           WR=WRP
+           NCross=NCrossP
+           Cross=CrossP
 
-              SUCCESS(MCTYPE)=SUCCESS(MCTYPE)+1
-              SUCCESS_TOTAL(MCTYPE)=SUCCESS_TOTAL(MCTYPE)+1
+           SUCCESS(MCTYPE)=SUCCESS(MCTYPE)+1
+           SUCCESS_TOTAL(MCTYPE)=SUCCESS_TOTAL(MCTYPE)+1
 
+        endif
+
+80      CONTINUE
+
+        !     Adapt the amplitude of step every NADAPT steps
+
+        if (mod(ISTEP,NADAPT(MCTYPE)).EQ.0) then
+           PHIT=real(SUCCESS(MCTYPE))/real(NADAPT(MCTYPE))
+           if (PHIT.GT.PDESIRE(MCTYPE)) then
+              MCAMP(MCTYPE)=MCAMP(MCTYPE)*1.05
+           else
+              MCAMP(MCTYPE)=MCAMP(MCTYPE)*0.95
+           endif
+           if (MCAMP(MCTYPE).GT.MAXAMP(MCTYPE)) then
+              MCAMP(MCTYPE)=MAXAMP(MCTYPE)
+              WINDOW(MCTYPE)=WINDOW(MCTYPE)+1
+           endif
+           if (MCAMP(MCTYPE).LT.MINAMP(MCTYPE)) then
+              MCAMP(MCTYPE)=MINAMP(MCTYPE)
+              WINDOW(MCTYPE)=WINDOW(MCTYPE)-1
            endif
 
-80         CONTINUE
+           IF (WINDOW(MCTYPE).LT.1) THEN
+              WINDOW(MCTYPE)=1
+           ENDIF
 
-           !     Adapt the amplitude of step every NADAPT steps
+           IF (WINDOW(MCTYPE).GT.WINDOW_MAX(MCTYPE)) THEN
+              WINDOW(MCTYPE)=WINDOW_MAX(MCTYPE)
+           ENDIF
 
-           if (mod(ISTEP,NADAPT(MCTYPE)).EQ.0) then
-              PHIT=real(SUCCESS(MCTYPE))/real(NADAPT(MCTYPE))
-              if (PHIT.GT.PDESIRE(MCTYPE)) then
-                 MCAMP(MCTYPE)=MCAMP(MCTYPE)*1.05
-              else
-                 MCAMP(MCTYPE)=MCAMP(MCTYPE)*0.95
-              endif
-              if (MCAMP(MCTYPE).GT.MAXAMP(MCTYPE)) then
-                 MCAMP(MCTYPE)=MAXAMP(MCTYPE)
-                 WINDOW(MCTYPE)=WINDOW(MCTYPE)+1
-              endif
-              if (MCAMP(MCTYPE).LT.MINAMP(MCTYPE)) then
-                 MCAMP(MCTYPE)=MINAMP(MCTYPE)
-                 WINDOW(MCTYPE)=WINDOW(MCTYPE)-1
-              endif
+           SUCCESS(MCTYPE)=0
 
-              IF (WINDOW(MCTYPE).LT.1) THEN
-                 WINDOW(MCTYPE)=1
-              ENDIF
+        endif
 
-              IF (WINDOW(MCTYPE).GT.WINDOW_MAX(MCTYPE)) THEN
-                 WINDOW(MCTYPE)=WINDOW_MAX(MCTYPE)
-              ENDIF
-
-              SUCCESS(MCTYPE)=0
-
-              IB=1
-              DO  I=1,NP
-                 R0(1)=nint(R(IB,1)/LBOX-0.5)*LBOX
-                 R0(2)=nint(R(IB,2)/LBOX-0.5)*LBOX
-                 R0(3)=nint(R(IB,3)/LBOX-0.5)*LBOX
-                 DO  J=1,N
-                    R(IB,1)=R(IB,1)-R0(1)
-                    R(IB,2)=R(IB,2)-R0(2)
-                    R(IB,3)=R(IB,3)-R0(3)
-                    IB=IB+1
-                 ENDDO
-              ENDDO
-
-           endif
-
-60               CONTINUE
-           
+60      CONTINUE
 
 
 
-        ENDDO
-
-        ISTEP=ISTEP+1   
 
      ENDDO
 
+     ISTEP=ISTEP+1   
 
-     
-     RETURN      
-     
+  ENDDO
+
+
+
+  RETURN      
+
 END SUBROUTINE MCSIM
-           !---------------------------------------------------------------*
+!---------------------------------------------------------------*
