@@ -55,7 +55,13 @@ program main
   !Set initial chain configuration
 
   call initcond(wlc_d%R,wlc_d%U,wlc_p%nT,wlc_p%nB,wlc_p%nP,wlc_p%FRMfile,&
-       wlc_p%gam,wlc_p%lbox,wlc_p%ring,wlc_d%rand_stat)
+       wlc_p%gam,wlc_p%lbox,wlc_p%ring,wlc_d%rand_stat,wlc_p%l,wlc_p%restrictedr,wlc_p%maxe2e,wlc_p%mine2e)
+
+ open(unit = 1, file = 'initlcond_save')
+ do i = 1,wlc_p%nT
+            write(1,*) wlc_d%r(i,:)
+         enddo
+         close(1)
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !Perform an initialization Monte Carlo simulation

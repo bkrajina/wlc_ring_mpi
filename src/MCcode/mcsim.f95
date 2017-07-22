@@ -4,7 +4,7 @@
 !     polymer chain.
       
 SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,INTON,EB,EPAR,EPERP,GAM,ETA,LHC,VHC,LBOX, &
-     MCAMP,SUCCESS,SUCCESS_TOTAL,MOVEON,WINDOW,RING,TWIST,Lk,LT,LP,L,stat)
+     MCAMP,SUCCESS,SUCCESS_TOTAL,MOVEON,WINDOW,RING,TWIST,Lk,LT,LP,L,stat,RESTRICTEDR,MAXEND2END,MINEND2END,DBS)
 
   use mersenne_twister
   IMPLICIT NONE
@@ -87,6 +87,12 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,INTON,EB,EPAR,EPERP,GAM,ETA,LHC,VHC,LBOX, &
   DOUBLE PRECISION VHC      ! HC strength
   DOUBLE PRECISION WR       ! Writhe of current structure
   DOUBLE PRECISION WRP      ! Writhe of test structure
+
+  ! Umbrella sampling variables
+  INTEGER RESTRICTEDR         ! Is rectriction between site distance on?
+  DOUBLE PRECISION MAXEND2END ! Maximum allowed distance between sites   
+  DOUBLE PRECISION MINEND2END ! Minimum allowed distance between sites
+  DOUBLE PRECISION DBS        ! Distance between sites 
 
   !     Random number generator 
   type(random_stat) stat  ! state of random number chain
@@ -183,13 +189,12 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,INTON,EB,EPAR,EPERP,GAM,ETA,LHC,VHC,LBOX, &
         CALL MC_move(R,U,RP,UP,NT,N,NP,IP,IB1,IB2,IT1,IT2,MCTYPE,MCAMP,WINDOW,RING,DIB,stat)
 
         !     If restriction of sites are on, calculate the distance in that current move. If the distance between sites is greater then maximum distance or less then minimum distance reject the move.
-        IF (RESTRICTEDR.EQ.1)
-          DBS=sqrt((RP(N*(IP-1),1)-RP(N*IP,1))+(RP(N*(IP-1),2)-RP(N*IP,2))+(RP(N*(IP-1),3)-RP(N*IP,3))
-          IF (MAXEND2END.LT.DBS) THEN 
+        IF (RESTRICTEDR.EQ.1) THEN
+          DBS=sqrt(sum(RP(N*(IP-1)+1,:)-RP(N*IP,:))**2)
+          IF (MAXEND2END.LT.DBS.OR.MINEND2END.GT.DBS) THEN 
              GOTO 80   !Skip check for move acceptance (reject move)
-          ELSEIF (MINEND2NED.GT.DBS)
-             GOTO 80   !Skip check for move acceptance (reject move)
-          ELSE
+          ENDIF
+        ENDIF
         !     If chain is a ring, calculate the alexander polynomial evaluated at t=-1. Reject the move if the chain becomes knotted (DELTA.NE.1)
         !     This is currently only set-up to handle one chain. Need to make modifications to handle multiple chain systems
 
@@ -261,7 +266,7 @@ SUBROUTINE MCsim(R,U,NT,N,NP,NSTEP,INTON,EB,EPAR,EPERP,GAM,ETA,LHC,VHC,LBOX, &
            SUCCESS_TOTAL(MCTYPE)=SUCCESS_TOTAL(MCTYPE)+1
 
         endif
-     ENDIF ! close the last restricted distance condition 
+ 
 80      CONTINUE
 
         !     Adapt the amplitude of step every NADAPT steps
