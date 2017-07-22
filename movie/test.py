@@ -9,7 +9,7 @@ input_folder = '../data'
 output_folder = 'pdb/test'
 
 #define topology ('linear' or 'circular')
-topo = 'circular'
+topo = 'linear'
 #define index range for coordinate files
 file_inds = range(1,101)
 os.system('rm -r %s/*' %output_folder)

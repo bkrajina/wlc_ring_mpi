@@ -29,8 +29,12 @@ module params
      integer nT                ! Total number of beads  NT=NP*N*G
      integer nB                ! Number of beads in a polymer NB=N*G
      integer nP                ! Number of polymers
+     real(dp) maxe2e   ! max distance between end to end points
+     real(dp) mine2e   ! min distance between end to end points
      real(dp) lp       ! persistence length
      real(dp) lt       ! twist persistence length
+     real(dp) b1       ! binding site 1
+     real(dp) b2       ! binding site 2
      real(dp) l0       ! Equilibrium segment length (same as gam)
      real(dp) l        ! actual length of polymer
      real(dp) eb     ! Energy of bending
@@ -42,6 +46,7 @@ module params
      real(dp) del      ! number of persistence lengths between beads
      real(dp) lhc      !hard-core diameter of lennard-jones repulsion
      real(dp) vhc      !hard-core repulsion strength
+     real(dp) dbs
      integer LK                ! Linking number
      integer nLKs      !Number of linking number replicas
      integer, allocatable, dimension(:) ::  LKs    !Vector of linking numbers for replicas
@@ -54,7 +59,7 @@ module params
      real(dp) MinAMP(nMoveTypes) ! minium amplitude
      real(dp) MaxAMP(nMoveTypes) ! maximum amplitude
      integer MOVEON(nMoveTypes)         ! Is the move active
-     integer NADAPT(nMoveTypes) ! Nunber of steps between adapt
+     integer NADAPT(nMoveTypes) ! Number of steps between adapt
 
      !   Timing variables
      integer nINIT              ! number of initialization Monte Carlo steps to perform
@@ -66,6 +71,7 @@ module params
     !   Switches
      integer ring              ! whether the polymer is a ring
      integer twist             ! whether to include twist (MC only for now)
+     integer restrictedr       ! whether to include a restriction between site distances
      logical ptON              ! is parallel tempering on?
      integer intON             ! self interactions on ?
      logical FRMfile           ! read initial condition R from file
@@ -166,6 +172,10 @@ contains
      wlc_p%moveON(5) = 0
      wlc_p%moveON(6) = 0    !By default, set total chain moves off
      
+     !umbrella sampling options
+     wlc_p%restrictedr = 0 !restriction between sites is off
+     wlc_p%maxe2e = 0
+     wlc_p%maxe2e = 0
 
    end subroutine set_param_defaults
 
@@ -210,6 +220,12 @@ subroutine read_from_file(infile, wlc_p)
            Call readI(wlc_p%nb)  ! actual number of beads we want to simulate
        CASE('L')
            Call readF(wlc_p%l)  ! actual length in AU of polymer we want to simulate
+       CASE ('RESTRICTEDR')
+           Call readI(wlc_p%restrictedr) ! end to end distance restriction on or off
+       CASE ('MAXEND2END')
+           Call readF(wlc_p%maxe2e)  ! maximum distance between sites
+       CASE ('MINEND2END')
+           Call readF(wlc_p%mine2e)  ! minimum distance between sites
        CASE('LT')
            Call readF(wlc_p%lt)  ! twist persistence length
        CASE('LP')
@@ -262,7 +278,8 @@ subroutine read_from_file(infile, wlc_p)
            call readI(wlc_p%intON) ! self interactions on
        CASE('VHC')
            call readF(wlc_p%vhc) ! hard-core repulsion strength
-
+       CASE('DBS')
+           call readF(wlc_p%dbs)
        CASE DEFAULT
            print*, "Error in MCvar_setparams.  Unidentified keyword:", &
                    TRIM(WORD)
@@ -622,7 +639,10 @@ subroutine save_configuration(wlc_p,wlc_d,ind)
          open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/EELAS', status = 'unknown', position = 'append')
          write(1,*) wlc_d%EELAS
          close(1)
-
+         
+         open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/DBS', status = 'unknown', position = 'append')
+         write(1,*) wlc_p%dbs
+         close(1)
 
          if (wlc_p%inton.eq.1) then
             open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/Eint', status = 'unknown', position = 'append')
@@ -637,14 +657,14 @@ subroutine save_configuration(wlc_p,wlc_d,ind)
      write(fileIND,*) ind
      !open file and write polymer configuration
      open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/r'//TRIM(ADJUSTL(fileIND)))
-     open(unit = 2, file = TRIM(ADJUSTL(savefile))//'/u'//TRIM(ADJUSTL(fileIND)))
+!     open(unit = 2, file = TRIM(ADJUSTL(savefile))//'/u'//TRIM(ADJUSTL(fileIND)))
 
      do i = 1,wlc_p%nT
         write(1,*) wlc_d%r(i,:)
-        write(2,*) wlc_d%u(i,:)
+!        write(2,*) wlc_d%u(i,:)
      enddo
      close(1)
-     close(2)
+!     close(2)
      
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !Append writhe squared radius of gyration and energies to trajctory file
@@ -672,6 +692,9 @@ subroutine save_configuration(wlc_p,wlc_d,ind)
      write(1,*) wlc_d%EELAS
      close(1)
 
+     open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/DBS', status = 'unknown', position = 'append')
+     write(1,*) wlc_p%dbs
+     close(1)
 
      if (wlc_p%inton.eq.1) then
         open(unit = 1, file = TRIM(ADJUSTL(savefile))//'/Eint', status = 'unknown', position = 'append')

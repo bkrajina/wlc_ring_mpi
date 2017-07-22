@@ -107,7 +107,8 @@ subroutine wlcsim(wlc_p,wlc_d)
            call MCsim(wlc_d%R,wlc_d%U,wlc_p%nT,wlc_p%nB,wlc_p%nP,wlc_p%NSTEP,wlc_p%intON,wlc_p%eb,&
                 wlc_p%epar,wlc_p%eperp,wlc_p%gam,wlc_p%eta, wlc_p%lhc,wlc_p%vhc,wlc_p%lbox, &
                 wlc_d%MCAMP,wlc_d%SUCCESS,wlc_d%successTOTAL,wlc_p%MOVEON,&
-                wlc_d%WINDOW,wlc_p%RING,wlc_p%TWIST,wlc_p%Lk,wlc_p%LT,wlc_p%LP,wlc_p%L,wlc_d%rand_stat)
+                wlc_d%WINDOW,wlc_p%RING,wlc_p%TWIST,wlc_p%Lk,wlc_p%LT,wlc_p%LP,wlc_p%L,wlc_d%rand_stat, &
+                wlc_p%restrictedr,wlc_p%maxe2e,wlc_p%mine2e,wlc_p%dbs)
            
          
            !Recalculate structural quantities and energies
@@ -140,7 +141,8 @@ subroutine wlcsim(wlc_p,wlc_d)
      call MCsim(wlc_d%R,wlc_d%U,wlc_p%nT,wlc_p%nB,wlc_p%nP,wlc_p%NSTEP,wlc_p%intON,wlc_p%eb,&
           wlc_p%epar,wlc_p%eperp,wlc_p%gam,wlc_p%eta, wlc_p%lhc,wlc_p%vhc,wlc_p%lbox, &
           wlc_d%MCAMP,wlc_d%SUCCESS,wlc_d%successTOTAL,wlc_p%MOVEON,&
-          wlc_d%WINDOW,wlc_p%RING,wlc_p%TWIST,wlc_p%Lk,wlc_p%LT,wlc_p%LP,wlc_p%L,wlc_d%rand_stat)
+          wlc_d%WINDOW,wlc_p%RING,wlc_p%TWIST,wlc_p%Lk,wlc_p%LT,wlc_p%LP,wlc_p%L,wlc_d%rand_stat, &
+          wlc_p%restrictedr,wlc_p%maxe2e,wlc_p%mine2e,wlc_p%dbs)
 
      !Recalculate structural quantities and energies
      call writhe(wlc_d%R,wlc_p%nB, wlc_d%Wr)

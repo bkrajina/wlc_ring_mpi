@@ -7,7 +7,7 @@
 !     Updated 11/3/2016
 
       
-SUBROUTINE initcond(R,U,NT,N,NP,FRMFILE,GAM,LBOX,RING,rand_stat)
+SUBROUTINE initcond(R,U,NT,N,NP,FRMFILE,GAM,LBOX,RING,rand_stat,L,RESTRICTEDR,MAXEND2END,MINEND2END)
       
   use mersenne_twister
 
@@ -17,10 +17,12 @@ SUBROUTINE initcond(R,U,NT,N,NP,FRMFILE,GAM,LBOX,RING,rand_stat)
 
   DOUBLE PRECISION R(NT,3)  ! Bead positions
   DOUBLE PRECISION U(NT,3)  ! Tangent vectors
+  DOUBLE PRECISION L        ! Length of the chain
   INTEGER N,NP,NT           ! Number of beads
-  DOUBLE PRECISION GAM       ! Equil bead separation
-  DOUBLE PRECISION LBOX(3)     ! Box edge length
+  DOUBLE PRECISION GAM      ! Equil bead separation
+  DOUBLE PRECISION LBOX(3)  ! Box edge length
   INTEGER I,J,IB            ! Index Holders
+  DOUBLE PRECISION S        ! Initial end to end distance
   LOGICAL FRMfile           ! Is conformation in file?
   INTEGER INPUT             ! Is input file set?
   INTEGER RING              ! Is polymer a ring?
@@ -28,6 +30,9 @@ SUBROUTINE initcond(R,U,NT,N,NP,FRMFILE,GAM,LBOX,RING,rand_stat)
   DOUBLE PRECISION R0(3)
   type(random_stat) rand_stat  ! state of random number chain
   real urand(1)        !random number
+  INTEGER RESTRICTEDR         ! Is rectriction between site distance on?
+  DOUBLE PRECISION MAXEND2END ! Maximum allowed distance between sites   
+  DOUBLE PRECISION MINEND2END ! Minimum allowed distance between sites    
 
 
   !     Input the conformation if FRMFILE=1
@@ -77,18 +82,49 @@ SUBROUTINE initcond(R,U,NT,N,NP,FRMFILE,GAM,LBOX,RING,rand_stat)
         !Cases
         !RING = 0
         !RING = 1
-
+        !RESTRICTEDR = 0 (Umbrella sampling off)
+        !RESTRICTEDR = 1 (Umbrella sampling on)
         !If not a ring, initialize as a straight line
         !If a ring, initialize as a circle
+        !If u.s. is on, initialize as a isosceles triangle
+        
+        S=(MAXEND2END+MINEND2END)/2  ! Initial distance between sites
 
         DO  J=1,N
            IF (RING.EQ.0) THEN
+              IF (RESTRICTEDR.EQ.1) THEN
+!               IF (GAM*(N-1).LT.L) THEN
+!                R(IB,1)=R0(1)
+!                R(IB,2)=R0(2)+GAM*(J-N/2.-0.5)
+!                R(IB,3)=R0(3)
+!                U(IB,1)=0.
+!                U(IB,2)=1.
+!                U(IB,3)=0.
+!               ELSE
+                IF (J.LT.N/2) THEN                          ! First half of triangle positive slope
+                 R(IB,1)=R0(1)+J*S/(N-1)                    ! From similarity of triangle
+                 R(IB,2)=R0(2)+J*sqrt((GAM*(N-1))**2-S**2)/(N-1) ! From similarity of triangle and Pythagorean theorem
+                 R(IB,3)=R0(3)
+                 U(IB,1)=S/(GAM*(N-1))
+                 U(IB,2)=1-S**2/(GAM*(N-1))**2
+                 U(IB,3)=0.
+                ELSE                                                ! Second half of the triangle negative slope
+                 R(IB,1)=R(IB-1,1)+S/(N-1)                        ! From similarity of triangle
+                 R(IB,2)=R0(2)+(N-J)*sqrt((GAM*(N-1))**2-S**2)/(N-1)  ! From similarity of triangle and Pythagorean theorem 
+                 R(IB,3)=R0(3)
+                 U(IB,1)=S/(GAM*(N-1))
+                 U(IB,2)=S**2/(GAM*(N-1))**2-1
+                 U(IB,3)=0.
+                ENDIF
+!               ENDIF
+              ELSE
               R(IB,1)=R0(1)
               R(IB,2)=R0(2)+GAM*(J-N/2.-0.5)
               R(IB,3)=R0(3)
               U(IB,1)=0.
               U(IB,2)=1.
-              U(IB,3)=0.			   
+              U(IB,3)=0.
+             ENDIF
            ELSE
               R(IB,1)=R0(1)+((GAM*N)/(2*PI))*Cos(J*2*PI/N)
               R(IB,2)=R0(2)+((GAM*N)/(2*PI))*Sin(J*2*PI/N)
