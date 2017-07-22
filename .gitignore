@@ -1,0 +1,5 @@
+data/*
+*.swp
+*.sw*
+*.pdb
+umbrella_samp/LINEAR*
