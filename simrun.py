@@ -47,6 +47,9 @@ def write_input(outfile, templatefile, params):
 # ################################################
 
 
+# compile the simulation
+os.system('./compile.sh')
+
 # Set the LKs for the simulation
 LKs = [0, 1, 2, 3]
 np.savetxt('input/LKs', LKs, fmt='%i')
@@ -64,7 +67,7 @@ L = 1000.
 NB = 100
 NSTEP = 100
 NREPLICAEXCHANGE = 100
-INDMAX = 100
+INDMAX = 10
 PTON = 'T'
 LK = 0
 params = {'NINIT': NINIT, 'L': L, 'INDMAX': INDMAX, 'NSTEP': NSTEP,
@@ -73,12 +76,6 @@ params = {'NINIT': NINIT, 'L': L, 'INDMAX': INDMAX, 'NSTEP': NSTEP,
 
 write_input('input/input', 'input/template', params)
 
-# #################################################
-# Compile and run the simulation
-# #################################################
-
-# compile the simulation
-os.system('./compile.sh')
 
 # run the simulation with the appropriate number of processors
 os.system('mpirun -np %i ./wlcsim' % (len(LKs)+1))
