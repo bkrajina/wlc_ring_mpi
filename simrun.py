@@ -66,7 +66,7 @@ NINIT = 100
 L = 1000.
 NB = 100
 NSTEP = 100
-NREPLICAEXCHANGE = 100
+NREPLICAEXCHANGE = 10
 INDMAX = 10
 PTON = 'T'
 LK = 0
@@ -78,4 +78,4 @@ write_input('input/input', 'input/template', params)
 
 
 # run the simulation with the appropriate number of processors
-os.system('mpirun -np %i ./wlcsim' % (len(LKs)+1))
+os.system('mpirun -np %i wlcsim' % (len(LKs)+1))

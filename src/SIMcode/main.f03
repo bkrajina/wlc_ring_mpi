@@ -15,7 +15,7 @@
 program main
 
   use params
-  
+  use mpi
   implicit none
 
   !Simulation state
@@ -103,6 +103,17 @@ program main
      enddo
      close(1)
   endif
+
+  ! If parallel tempering is on, finalize MPI to exit properly
+
+  if (wlc_p%ptON) then
+     call MPI_Finalize(wlc_d%error)
+     if (wlc_d%error.ne.0) then
+        print*, "MPI_Finalize", wlc_d%error
+     endif
+              
+  endif
+  
 end program main
   
 

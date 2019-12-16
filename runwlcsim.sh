@@ -4,4 +4,4 @@ mpifort -o wlcsim  mersenne_twister.f90 SIMcode/inputparams.f90 SIMcode/params.f
 rm -r ../data/*
 cd ../
 mv src/wlcsim ./
-mpirun -np 5 ./wlcsim
+mpirun -np 5 wlcsim
